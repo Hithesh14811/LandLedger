@@ -9,7 +9,7 @@ import { useStore } from '../store';
 import { calculateComprehensiveRisk, RiskBreakdown, FactorAnalysis } from '../utils/riskEngine';
 
 export function VerifyPropertyPage() {
-  const { properties, users, documents, ledger, encroachmentAlerts, getPropertyHistory } = useStore();
+  const { properties, users, documents, ledger, encroachmentAlerts, getPropertyHistory, getOwnershipChain } = useStore();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
@@ -35,33 +35,7 @@ export function VerifyPropertyPage() {
     return calculateComprehensiveRisk(property, ledger, encroachmentAlerts, documents, users);
   }, [property, ledger, encroachmentAlerts, documents, users]);
 
-  const ownershipNodes = property
-    ? history
-        .filter(block => 
-          block.transactionType === 'REGISTER_PROPERTY' || 
-          block.transactionType === 'TRANSFER_PROPERTY' ||
-          block.transactionType === 'TRANSFER_WITH_NOC'
-        )
-        .sort((a, b) => a.timestamp - b.timestamp)
-        .reduce<string[]>((wallets, block) => {
-          if (block.transactionType === 'REGISTER_PROPERTY' && block.transactionData.toWallet) {
-            if (wallets[wallets.length - 1] !== block.transactionData.toWallet) {
-              wallets.push(block.transactionData.toWallet);
-            }
-          }
-          if (
-            (block.transactionType === 'TRANSFER_PROPERTY' || block.transactionType === 'TRANSFER_WITH_NOC')
-          ) {
-            if (wallets.length === 0 && block.transactionData.fromWallet) {
-              wallets.push(block.transactionData.fromWallet);
-            }
-            if (block.transactionData.toWallet) {
-              wallets.push(block.transactionData.toWallet);
-            }
-          }
-          return wallets;
-        }, [])
-    : [];
+  const ownershipNodes = property ? getOwnershipChain(property.propertyID) : [];
 
   const toggleFactor = (factor: string) => {
     setExpandedFactors(prev => 
@@ -336,19 +310,29 @@ export function VerifyPropertyPage() {
                   Ownership Chain
                 </h3>
                 <div className="flex flex-wrap items-center gap-3">
-                  {(ownershipNodes.length > 0 ? ownershipNodes : [property.currentOwnerWallet]).map((wallet, index, arr) => {
-                    const nodeUser = users.find(u => u.walletAddress === wallet);
+                  {(ownershipNodes.length > 0
+                    ? ownershipNodes
+                    : property
+                      ? [{
+                          wallet: property.currentOwnerWallet,
+                          name: owner?.name || 'Unknown',
+                          timestamp: property.registeredAt
+                        }]
+                      : []
+                  ).map((node, index, arr) => {
                     const isCurrent = index === arr.length - 1;
                     return (
-                      <div key={`${wallet}-${index}`} className="flex items-center gap-3">
+                      <div key={`${node.wallet}-${index}`} className="flex items-center gap-3">
                         <div className={`px-4 py-3 rounded-xl border-2 ${
                           isCurrent ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white'
                         }`}>
                           <p className={`text-sm font-semibold ${isCurrent ? 'text-emerald-700' : 'text-slate-700'}`}>
-                            {nodeUser?.name || 'Unknown'}
+                            {node.name || 'Unknown'}
                             {isCurrent && <span className="ml-2 text-xs text-emerald-600">(Current)</span>}
                           </p>
-                          <p className="text-xs font-mono text-slate-400">{wallet.substring(0, 10)}...{wallet.substring(wallet.length - 6)}</p>
+                          <p className="text-xs font-mono text-slate-400">
+                            {node.wallet.substring(0, 10)}...{node.wallet.substring(node.wallet.length - 6)}
+                          </p>
                         </div>
                         {!isCurrent && <span className="text-slate-400 text-xl">→</span>}
                       </div>
