@@ -33,8 +33,8 @@ Follow these step-by-step instructions to set up the project locally.
 
 If you haven't already, clone or navigate to the repository on your local machine:
 ```bash
-git clone <repository-url>
-cd Cyanide_boys
+git clone https://github.com/Hithesh14811/LandLedger.git
+cd LandLedger
 ```
 
 ### 2. Install Dependencies
@@ -71,3 +71,11 @@ This will generate optimized, minified static files in the `dist` directory. You
 - `src/types/`: TypeScript interface definitions ensuring end-to-end type safety.
 - `src/App.tsx`: Main routing and layout wrapper.
 - `vite.config.ts`: Configuration for the Vite bundler.
+
+## Prototype notes
+
+LandLedger is a hackathon-style prototype, not a production system:
+
+- The ledger is hash-chained and validated in the browser (`validateChain` in `src/utils/crypto.ts`); it is not connected to a public blockchain network.
+- For a smoother demo, wallet keys are derived deterministically from the user ID and Aadhaar number with a fixed salt (`derivePrivateKey`). A real deployment would need user-held keys or a proper key-management service instead.
+- Property data lives in client-side state (Zustand), so nothing persists across browsers.
